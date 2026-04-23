@@ -8,6 +8,7 @@ This is the simplest working Phase 1 prototype for the ecommerce Customer Suppor
 - [sample-tickets.json](/Users/jarvis/Desktop/Customer_Support_Copilot/sample-tickets.json)
 
 Phase 2 adds lightweight local persistence and a simple review history screen while keeping the existing Phase 1 analyze flow unchanged.
+The current UI is arranged as a simple operations console: ticket intake on the left, recommendation review on the right, and saved history underneath.
 
 ## What It Includes
 

@@ -11,150 +11,183 @@
       <section class="panel">
         <div class="panel-header">
           <div>
-            <p class="eyebrow">Phase 1 Prototype</p>
+            <p class="eyebrow">Operations Console</p>
             <h1>Customer Support Copilot</h1>
-            <p class="intro">Paste a ticket, load a sample, and generate a recommendation for human review.</p>
+            <p class="intro">Paste a ticket, load a sample, and review a structured recommendation before any human action.</p>
           </div>
           <div class="status-badge">Needs human review</div>
         </div>
-
-        <div class="sample-row">
-          <label for="sampleSelect">Sample tickets</label>
-          <div class="sample-controls">
-            <select id="sampleSelect"></select>
-            <button id="loadSampleButton" type="button">Load Sample Ticket</button>
-          </div>
-        </div>
-
-        <form id="ticketForm" class="ticket-form">
-          <div class="field">
-            <label for="subject">Ticket subject</label>
-            <input id="subject" name="subject" type="text" placeholder="Optional subject" />
-          </div>
-
-          <div class="field">
-            <label for="body">Ticket body</label>
-            <textarea id="body" name="body" rows="7" placeholder="Customer message" required></textarea>
-          </div>
-
-          <div class="field-grid">
-            <div class="field">
-              <label for="order_id">Order ID</label>
-              <input id="order_id" name="order_id" type="text" placeholder="Optional order ID" />
-            </div>
-            <div class="field">
-              <label for="order_status">Order status</label>
-              <input id="order_status" name="order_status" type="text" placeholder="Optional order status" />
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="customer_history">Customer history</label>
-            <textarea
-              id="customer_history"
-              name="customer_history"
-              rows="3"
-              placeholder="Optional prior contact or notes"
-            ></textarea>
-          </div>
-
-          <div class="field">
-            <label for="policy_snippet">Policy snippet</label>
-            <textarea
-              id="policy_snippet"
-              name="policy_snippet"
-              rows="3"
-              placeholder="Optional policy or SOP excerpt"
-            ></textarea>
-          </div>
-
-          <div class="actions">
-            <button id="analyzeButton" type="submit">Analyze Ticket</button>
-            <span id="formMessage" class="form-message" aria-live="polite"></span>
-          </div>
-        </form>
       </section>
 
-      <section id="reviewSection" class="panel review-panel hidden">
-        <div class="panel-header">
-          <div>
-            <p class="eyebrow">Recommendation Review</p>
-            <h2>AI Output</h2>
+      <section class="workspace-grid">
+        <section class="panel">
+          <div class="panel-header compact">
+            <div class="field">
+              <p class="eyebrow">Ticket Intake</p>
+              <h2>New Analysis</h2>
+              <p class="intro">Create a new case analysis or load a saved sample.</p>
+            </div>
           </div>
-          <div class="status-badge">Needs human review</div>
-        </div>
 
-        <div class="review-grid">
-          <article class="review-card">
-            <h3>Ticket</h3>
-            <dl class="details-list">
-              <div>
-                <dt>Subject</dt>
-                <dd id="ticketSubject">-</dd>
-              </div>
-              <div>
-                <dt>Body</dt>
-                <dd id="ticketBody">-</dd>
-              </div>
-              <div>
-                <dt>Order ID</dt>
-                <dd id="ticketOrderId">-</dd>
-              </div>
-              <div>
-                <dt>Order status</dt>
-                <dd id="ticketOrderStatus">-</dd>
-              </div>
-            </dl>
-          </article>
+          <div class="sample-row">
+            <label for="sampleSelect">Sample tickets</label>
+            <div class="sample-controls">
+              <select id="sampleSelect"></select>
+              <button id="loadSampleButton" type="button">Load Sample Ticket</button>
+            </div>
+          </div>
 
-          <article class="review-card">
-            <h3>Recommendation</h3>
-            <dl class="details-list">
+          <form id="ticketForm" class="ticket-form">
+            <div class="field">
+              <label for="subject">Ticket subject</label>
+              <input id="subject" name="subject" type="text" placeholder="Optional subject" />
+            </div>
+
+            <div class="field">
+              <label for="body">Ticket body</label>
+              <textarea id="body" name="body" rows="7" placeholder="Customer message" required></textarea>
+            </div>
+
+            <div class="field-grid">
+              <div class="field">
+                <label for="order_id">Order ID</label>
+                <input id="order_id" name="order_id" type="text" placeholder="Optional order ID" />
+              </div>
+              <div class="field">
+                <label for="order_status">Order status</label>
+                <input id="order_status" name="order_status" type="text" placeholder="Optional order status" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="customer_history">Customer history</label>
+              <textarea
+                id="customer_history"
+                name="customer_history"
+                rows="3"
+                placeholder="Optional prior contact or notes"
+              ></textarea>
+            </div>
+
+            <div class="field">
+              <label for="policy_snippet">Policy snippet</label>
+              <textarea
+                id="policy_snippet"
+                name="policy_snippet"
+                rows="3"
+                placeholder="Optional policy or SOP excerpt"
+              ></textarea>
+            </div>
+
+            <div class="actions sticky-actions">
+              <button id="analyzeButton" type="submit">Analyze Ticket</button>
+              <span id="formMessage" class="form-message" aria-live="polite"></span>
+            </div>
+          </form>
+        </section>
+
+        <section id="reviewSection" class="panel review-panel">
+          <div class="panel-header compact">
+            <div>
+              <p class="eyebrow">Recommendation Review</p>
+              <h2>AI Output</h2>
+              <p class="intro">Structured guidance for a human agent to review and edit.</p>
+            </div>
+            <div class="status-badge">Needs human review</div>
+          </div>
+
+          <div class="case-summary">
+            <div class="case-meta">
               <div>
-                <dt>Category</dt>
-                <dd id="recCategory">-</dd>
+                <span class="meta-label">Ticket ID</span>
+                <strong id="ticketMetaId">Pending</strong>
               </div>
               <div>
-                <dt>Urgency</dt>
-                <dd id="recUrgency">-</dd>
+                <span class="meta-label">Created</span>
+                <strong id="ticketMetaCreated">Awaiting analysis</strong>
               </div>
-              <div>
-                <dt>Customer issue summary</dt>
-                <dd id="recSummary">-</dd>
-              </div>
-              <div>
-                <dt>Suggested reply</dt>
-                <dd>
-                  <textarea id="recReply" rows="7"></textarea>
-                </dd>
-              </div>
-              <div>
-                <dt>Policy/source used</dt>
-                <dd id="recPolicy">-</dd>
-              </div>
-              <div>
-                <dt>Missing information</dt>
-                <dd>
-                  <ul id="recMissing" class="missing-list"></ul>
-                </dd>
-              </div>
-              <div>
-                <dt>Escalation decision</dt>
-                <dd id="recEscalationDecision">-</dd>
-              </div>
-              <div>
-                <dt>Escalation reason</dt>
-                <dd id="recEscalationReason">-</dd>
-              </div>
-            </dl>
-          </article>
-        </div>
+            </div>
+            <div class="chip-row">
+              <span id="recCategoryChip" class="chip chip-neutral">Awaiting analysis</span>
+              <span id="recUrgencyChip" class="chip chip-neutral">Urgency pending</span>
+              <span id="recEscalationChip" class="chip chip-neutral">Escalation pending</span>
+            </div>
+          </div>
+
+          <div class="review-grid">
+            <article class="review-card">
+              <h3>Customer Ticket</h3>
+              <dl class="details-list">
+                <div>
+                  <dt>Subject</dt>
+                  <dd id="ticketSubject">-</dd>
+                </div>
+                <div>
+                  <dt>Body</dt>
+                  <dd id="ticketBody">-</dd>
+                </div>
+                <div>
+                  <dt>Order ID</dt>
+                  <dd id="ticketOrderId">-</dd>
+                </div>
+                <div>
+                  <dt>Order status</dt>
+                  <dd id="ticketOrderStatus">-</dd>
+                </div>
+              </dl>
+            </article>
+
+            <article class="review-card">
+              <h3>Recommendation</h3>
+              <dl class="details-list">
+                <div>
+                  <dt>Category</dt>
+                  <dd id="recCategory">-</dd>
+                </div>
+                <div>
+                  <dt>Urgency</dt>
+                  <dd id="recUrgency">-</dd>
+                </div>
+                <div>
+                  <dt>Customer issue summary</dt>
+                  <dd id="recSummary">No recommendation yet.</dd>
+                </div>
+                <div>
+                  <dt>Suggested reply</dt>
+                  <dd>
+                    <textarea id="recReply" rows="7" placeholder="Suggested reply will appear here"></textarea>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Policy/source used</dt>
+                  <dd id="recPolicy">-</dd>
+                </div>
+                <div>
+                  <dt>Missing information</dt>
+                  <dd>
+                    <ul id="recMissing" class="missing-list">
+                      <li>Analyze a ticket to see missing information.</li>
+                    </ul>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Escalation decision</dt>
+                  <dd id="recEscalationDecision">-</dd>
+                </div>
+                <div>
+                  <dt>Escalation reason</dt>
+                  <dd id="recEscalationReason">-</dd>
+                </div>
+              </dl>
+            </article>
+          </div>
+        </section>
       </section>
 
       <section class="panel">
         <div class="panel-header">
           <div>
-            <p class="eyebrow">Phase 2</p>
+            <p class="eyebrow">Review History</p>
             <h2>Review History</h2>
             <p class="intro">Previously analyzed tickets saved locally on this machine.</p>
           </div>

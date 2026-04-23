@@ -4,6 +4,8 @@ const loadSampleButton = document.querySelector("#loadSampleButton");
 const formMessage = document.querySelector("#formMessage");
 const reviewSection = document.querySelector("#reviewSection");
 const historyBody = document.querySelector("#historyBody");
+const ticketMetaId = document.querySelector("#ticketMetaId");
+const ticketMetaCreated = document.querySelector("#ticketMetaCreated");
 
 const ticketFields = {
   subject: document.querySelector("#subject"),
@@ -23,12 +25,15 @@ const ticketReviewFields = {
 
 const recommendationFields = {
   category: document.querySelector("#recCategory"),
+  categoryChip: document.querySelector("#recCategoryChip"),
   urgency: document.querySelector("#recUrgency"),
+  urgencyChip: document.querySelector("#recUrgencyChip"),
   summary: document.querySelector("#recSummary"),
   reply: document.querySelector("#recReply"),
   policy: document.querySelector("#recPolicy"),
   missing: document.querySelector("#recMissing"),
   escalationDecision: document.querySelector("#recEscalationDecision"),
+  escalationChip: document.querySelector("#recEscalationChip"),
   escalationReason: document.querySelector("#recEscalationReason")
 };
 
@@ -60,7 +65,20 @@ function loadTicketIntoForm(ticket) {
   setMessage(`Loaded sample ticket: ${ticket.id}`);
 }
 
+function applyChipState(element, label, type) {
+  element.textContent = label;
+  element.className = "chip";
+
+  if (type) {
+    element.classList.add(type);
+  } else {
+    element.classList.add("chip-neutral");
+  }
+}
+
 function renderRecommendation(ticket, recommendation) {
+  ticketMetaId.textContent = ticket.id || "Unsaved";
+  ticketMetaCreated.textContent = formatCreatedAt(ticket.created_at) || "Just now";
   ticketReviewFields.subject.textContent = ticket.subject || "-";
   ticketReviewFields.body.textContent = ticket.body || "-";
   ticketReviewFields.orderId.textContent = ticket.order_id || "-";
@@ -73,6 +91,26 @@ function renderRecommendation(ticket, recommendation) {
   recommendationFields.policy.textContent = recommendation.policy_source_used;
   recommendationFields.escalationDecision.textContent = recommendation.escalation_decision;
   recommendationFields.escalationReason.textContent = recommendation.escalation_reason;
+
+  applyChipState(
+    recommendationFields.categoryChip,
+    recommendation.category,
+    recommendation.category === "Out of scope" ? "chip-dark" : "chip-blue"
+  );
+  applyChipState(
+    recommendationFields.urgencyChip,
+    `Urgency: ${recommendation.urgency}`,
+    recommendation.urgency === "High"
+      ? "chip-red"
+      : recommendation.urgency === "Medium"
+        ? "chip-amber"
+        : "chip-neutral"
+  );
+  applyChipState(
+    recommendationFields.escalationChip,
+    recommendation.escalation_decision,
+    recommendation.escalation_decision === "Escalate" ? "chip-red-outline" : "chip-green"
+  );
 
   recommendationFields.missing.innerHTML = "";
 
@@ -88,7 +126,6 @@ function renderRecommendation(ticket, recommendation) {
     });
   }
 
-  reviewSection.classList.remove("hidden");
   reviewSection.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -109,6 +146,7 @@ function formatCreatedAt(value) {
 
 function createHistoryRow(entry) {
   const row = document.createElement("tr");
+  row.className = "history-row";
 
   row.innerHTML = `
     <td>${entry.ticket_id}</td>
