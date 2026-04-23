@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://customer-support-copilot.local/schemas/ai-output.schema.json",
+  "title": "Customer Support Copilot AI Output",
+  "description": "Structured recommendation returned by the copilot for a single customer support ticket.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "category",
+    "urgency",
+    "customer_issue_summary",
+    "suggested_reply",
+    "policy_source_used",
+    "missing_information",
+    "escalation_decision",
+    "escalation_reason"
+  ],
+  "properties": {
+    "category": {
+      "type": "string",
+      "description": "Exactly one supported category or Out of scope.",
+      "enum": [
+        "Return request",
+        "Refund request",
+        "Damaged item",
+        "Shipping delay / missing order",
+        "Cancellation request",
+        "Out of scope"
+      ]
+    },
+    "urgency": {
+      "type": "string",
+      "description": "Priority label for agent review.",
+      "enum": [
+        "Low",
+        "Medium",
+        "High"
+      ]
+    },
+    "customer_issue_summary": {
+      "type": "string",
+      "description": "One to three plain-language sentences summarizing the customer's issue.",
+      "minLength": 1
+    },
+    "suggested_reply": {
+      "type": "string",
+      "description": "A conservative draft reply for a human agent to review and edit before sending.",
+      "minLength": 1
+    },
+    "policy_source_used": {
+      "type": "string",
+      "description": "The policy, support guidance, or fallback source used for the recommendation.",
+      "minLength": 1
+    },
+    "missing_information": {
+      "type": "array",
+      "description": "Information still needed before a human agent can proceed confidently.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "escalation_decision": {
+      "type": "string",
+      "description": "Whether the case should be escalated for further human review.",
+      "enum": [
+        "Escalate",
+        "Do not escalate"
+      ]
+    },
+    "escalation_reason": {
+      "type": "string",
+      "description": "Short explanation for the escalation decision.",
+      "minLength": 1
+    }
+  },
+  "examples": [
+    {
+      "category": "Refund request",
+      "urgency": "Medium",
+      "customer_issue_summary": "The customer wants a refund after a late delivery and says the item is no longer needed.",
+      "suggested_reply": "Thanks for reaching out, and I'm sorry for the delay. I can help review your refund request. Please share your order number and confirm whether you still have the item so our team can review the next steps.",
+      "policy_source_used": "Refund policy - delayed delivery review",
+      "missing_information": [
+        "Whether the item was kept or returned"
+      ],
+      "escalation_decision": "Do not escalate",
+      "escalation_reason": "This appears to be a standard supported refund request and the frontline agent can gather the remaining information."
+    }
+  ]
+}
