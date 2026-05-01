@@ -4,12 +4,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyzeTicket } from "./analyzer.js";
 import { createStorage } from "./storage.js";
+import { validateAndNormalizeTicketInput, validateReviewActionInput } from "./ticketInput.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const publicDir = path.join(rootDir, "public");
 const sampleTicketsPath = path.join(rootDir, "sample-tickets.json");
+const regressionTicketsPath = path.join(rootDir, "regression-tickets.json");
 const schemaPath = path.join(rootDir, "AI_OUTPUT_SCHEMA.json");
 const promptSpecPath = path.join(rootDir, "PROMPT_SPEC.md");
 const dbPath = path.join(rootDir, "data", "copilot.db");
@@ -34,7 +36,11 @@ async function readJsonBody(request) {
     return {};
   }
 
-  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch {
+    throw new Error("Request body must be valid JSON.");
+  }
 }
 
 function sendJson(response, statusCode, payload) {
@@ -77,22 +83,23 @@ const server = createServer(async (request, response) => {
       return sendJson(response, 200, sampleTickets);
     }
 
+    if (request.method === "GET" && requestUrl.pathname === "/api/regression-tickets") {
+      const regressionTickets = JSON.parse(await readFile(regressionTicketsPath, "utf8"));
+      return sendJson(response, 200, regressionTickets);
+    }
+
     if (request.method === "POST" && requestUrl.pathname === "/api/tickets/analyze") {
       const body = await readJsonBody(request);
-      const ticket = {
-        subject: body.subject?.trim() || "",
-        body: body.body?.trim() || "",
-        order_id: body.order_id?.trim() || "",
-        order_status: body.order_status?.trim() || "",
-        customer_history: body.customer_history?.trim() || "",
-        policy_snippet: body.policy_snippet?.trim() || ""
-      };
+      const validation = validateAndNormalizeTicketInput(body);
 
-      if (!ticket.body) {
+      if (!validation.valid) {
         return sendJson(response, 400, {
-          error: "Ticket body is required."
+          error: "Ticket input is invalid.",
+          details: validation.errors
         });
       }
+
+      const ticket = validation.ticket;
 
       const analysis = await analyzeTicket({
         ticket,
@@ -105,6 +112,40 @@ const server = createServer(async (request, response) => {
         ticket: saved.ticket,
         recommendation: saved.recommendation,
         meta: analysis.meta
+      });
+    }
+
+    if (request.method === "POST" && /^\/api\/tickets\/\d+\/review$/.test(requestUrl.pathname)) {
+      const ticketId = Number(requestUrl.pathname.split("/")[3]);
+
+      if (!Number.isInteger(ticketId) || ticketId < 1) {
+        return sendJson(response, 400, {
+          error: "Valid ticket ID is required."
+        });
+      }
+
+      const existing = storage.getAnalysis(ticketId);
+
+      if (!existing) {
+        return sendJson(response, 404, {
+          error: "Ticket not found."
+        });
+      }
+
+      const body = await readJsonBody(request);
+      const validation = validateReviewActionInput(body);
+
+      if (!validation.valid) {
+        return sendJson(response, 400, {
+          error: "Review action is invalid.",
+          details: validation.errors
+        });
+      }
+
+      const savedReviewAction = storage.saveReviewAction(ticketId, validation.reviewAction);
+
+      return sendJson(response, 200, {
+        review_action: savedReviewAction
       });
     }
 

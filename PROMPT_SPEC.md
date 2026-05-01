@@ -33,6 +33,7 @@ Hard rules:
 - Do not fabricate policy details. Use only the provided policy snippet or a safe fallback description when no policy is provided.
 - If the ticket is ambiguous, unsupported, or does not clearly fit one supported category, set category to "Out of scope".
 - If category is "Out of scope", set escalation_decision to "Escalate".
+- If the customer mixes multiple supported intents and no single category is clearly primary, prefer "Out of scope" instead of guessing.
 - Suggested replies must be conservative, polite, and suitable for a human agent to review and edit before sending.
 - Suggested replies should acknowledge the issue, avoid overpromising, and ask for missing information when needed.
 
@@ -82,6 +83,11 @@ Ticket input:
 Instructions:
 - Choose exactly one category from the allowed category list in the input.
 - If the ticket is ambiguous, unsupported, or outside the five supported categories, choose "Out of scope".
+- Use these distinctions consistently:
+  - choose "Return request" for requests to send an item back, exchange it, or resolve fit/size issues
+  - choose "Refund request" for explicit money-back requests, late-delivery refund demands, or charge-related refund requests
+  - choose "Shipping delay / missing order" for in-transit delays, delivered-but-not-received cases, or "where is my order" requests
+  - choose "Out of scope" when return and refund are mixed with no clearly primary intent
 - Use only the allowed urgency values.
 - Use only the allowed escalation_decision values.
 - Keep the customer_issue_summary to one to three sentences.

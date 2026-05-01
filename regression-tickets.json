@@ -1,0 +1,86 @@
+[
+  {
+    "id": "reg-return-ambiguous-001",
+    "subject": "Need to send this back",
+    "body": "The jacket fits poorly and I want to return it for a different size. Order ORD-3101.",
+    "order_id": "ORD-3101",
+    "order_status": "Delivered",
+    "customer_history": "No prior support contact.",
+    "policy_snippet": "Returns can be reviewed for delivered items when the customer provides an order number and return reason.",
+    "expected_category": "Return request",
+    "expected_escalation_decision": "Do not escalate",
+    "notes": "Should stay a return request and not shift into refund just because the customer is unhappy."
+  },
+  {
+    "id": "reg-refund-late-001",
+    "subject": "Want my money back",
+    "body": "My package showed up a week late and I want a refund because I had to buy the item somewhere else. Order ORD-3102.",
+    "order_id": "ORD-3102",
+    "order_status": "Delivered",
+    "customer_history": "Customer contacted support once yesterday.",
+    "policy_snippet": "Refund requests for delayed delivery require review of order details and whether the customer kept the item.",
+    "expected_category": "Refund request",
+    "expected_escalation_decision": "Do not escalate",
+    "notes": "Late delivery with explicit money-back language should be refund, not shipping delay."
+  },
+  {
+    "id": "reg-shipping-delay-001",
+    "subject": "Where is my order",
+    "body": "The tracking page still says in transit and the delivery date passed two days ago. Order ORD-3103.",
+    "order_id": "ORD-3103",
+    "order_status": "In transit",
+    "customer_history": "No prior support contact.",
+    "policy_snippet": "Shipping delays require the order ID and carrier status before next-step review.",
+    "expected_category": "Shipping delay / missing order",
+    "expected_escalation_decision": "Do not escalate",
+    "notes": "Standard shipping delay should remain supported and not escalate."
+  },
+  {
+    "id": "reg-missing-order-001",
+    "subject": "Delivered but not here",
+    "body": "Tracking says my order was delivered but nothing was at my door when I got home. Order ORD-3104.",
+    "order_id": "ORD-3104",
+    "order_status": "Delivered",
+    "customer_history": "Customer contacted support once today.",
+    "policy_snippet": "Missing order claims require order ID and address confirmation before review.",
+    "expected_category": "Shipping delay / missing order",
+    "expected_escalation_decision": "Do not escalate",
+    "notes": "Delivered-but-not-received should map to missing order handling."
+  },
+  {
+    "id": "reg-cancel-too-late-001",
+    "subject": "Cancel this order now",
+    "body": "Please cancel order ORD-3105 before it ships. I placed it by mistake an hour ago.",
+    "order_id": "ORD-3105",
+    "order_status": "Processing",
+    "customer_history": "No prior support contact.",
+    "policy_snippet": "Cancellation requests can be reviewed before shipment but are not guaranteed once fulfillment begins.",
+    "expected_category": "Cancellation request",
+    "expected_escalation_decision": "Do not escalate",
+    "notes": "Should stay cancellation request and keep reply conservative."
+  },
+  {
+    "id": "reg-return-vs-refund-ambiguous-001",
+    "subject": "Need help with this order",
+    "body": "I do not want this item anymore. Can I return it or get a refund? Order ORD-3106.",
+    "order_id": "ORD-3106",
+    "order_status": "Delivered",
+    "customer_history": "No prior support contact.",
+    "policy_snippet": "",
+    "expected_category": "Out of scope",
+    "expected_escalation_decision": "Escalate",
+    "notes": "Ambiguous mixed-intent return/refund request should fall back to out of scope for safe human review."
+  },
+  {
+    "id": "reg-legal-risk-001",
+    "subject": "Refund me or I will contact my bank",
+    "body": "My order arrived late and if you do not refund me today I am contacting my bank and filing a complaint.",
+    "order_id": "ORD-3107",
+    "order_status": "Delivered",
+    "customer_history": "Customer contacted support twice with no resolution.",
+    "policy_snippet": "",
+    "expected_category": "Refund request",
+    "expected_escalation_decision": "Escalate",
+    "notes": "Still refund-related, but risk language should escalate."
+  }
+]

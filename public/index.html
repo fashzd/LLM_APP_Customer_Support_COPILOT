@@ -37,6 +37,38 @@
             </div>
           </div>
 
+          <section class="sample-panel">
+            <div class="sample-panel-header">
+              <h3>Sample QA</h3>
+              <span id="sampleQaStatus" class="chip chip-neutral">No sample loaded</span>
+            </div>
+            <div class="sample-controls qa-mode-row">
+              <select id="qaModeSelect">
+                <option value="sample">Core samples</option>
+                <option value="regression">Regression set</option>
+              </select>
+              <button id="runQaButton" type="button" class="secondary-button">Run QA Check</button>
+            </div>
+            <dl class="sample-details">
+              <div>
+                <dt>Expected category</dt>
+                <dd id="sampleExpectedCategory">-</dd>
+              </div>
+              <div>
+                <dt>Expected escalation</dt>
+                <dd id="sampleExpectedEscalation">-</dd>
+              </div>
+              <div>
+                <dt>Notes</dt>
+                <dd id="sampleNotes">Load a sample ticket to view expected behavior.</dd>
+              </div>
+              <div>
+                <dt>Latest comparison</dt>
+                <dd id="sampleComparison">Analyze a loaded sample to compare the result.</dd>
+              </div>
+            </dl>
+          </section>
+
           <form id="ticketForm" class="ticket-form">
             <div class="field">
               <label for="subject">Ticket subject</label>
@@ -71,6 +103,10 @@
 
             <div class="field">
               <label for="policy_snippet">Policy snippet</label>
+              <p class="field-help">
+                Optional internal policy or SOP excerpt. This helps ground the recommendation without changing the
+                human-review-only workflow.
+              </p>
               <textarea
                 id="policy_snippet"
                 name="policy_snippet"
@@ -114,6 +150,12 @@
             </div>
           </div>
 
+          <section id="analysisNotice" class="analysis-notice hidden">
+            <h3>Analysis Trace</h3>
+            <p id="analysisNoticeText">No analysis trace yet.</p>
+            <p id="analysisNoticeMeta" class="analysis-meta"></p>
+          </section>
+
           <div class="review-grid">
             <article class="review-card">
               <h3>Customer Ticket</h3>
@@ -133,6 +175,10 @@
                 <div>
                   <dt>Order status</dt>
                   <dd id="ticketOrderStatus">-</dd>
+                </div>
+                <div>
+                  <dt>Policy snippet provided</dt>
+                  <dd id="ticketPolicySnippet">No policy snippet provided.</dd>
                 </div>
               </dl>
             </article>
@@ -181,6 +227,61 @@
               </dl>
             </article>
           </div>
+
+          <section class="review-action-panel">
+            <div class="panel-header compact">
+              <div>
+                <p class="eyebrow">Final Review</p>
+                <h3>Review Action</h3>
+              </div>
+              <span id="reviewStatusChip" class="chip chip-neutral">Not reviewed</span>
+            </div>
+            <form id="reviewActionForm" class="review-action-form">
+              <div class="field-grid review-action-grid">
+                <div class="field">
+                  <label for="reviewedBy">Reviewed by</label>
+                  <input id="reviewedBy" name="reviewedBy" type="text" placeholder="Agent name or initials" />
+                </div>
+                <div class="field">
+                  <label for="finalDisposition">Final disposition</label>
+                  <select id="finalDisposition" name="finalDisposition">
+                    <option value="">Select a disposition</option>
+                    <option value="used_as_draft">Used as draft</option>
+                    <option value="edited_and_used">Edited and used</option>
+                    <option value="requested_more_info">Requested more info</option>
+                    <option value="escalated">Escalated</option>
+                    <option value="discarded">Discarded</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="reviewUpdatedAt">Saved review status</label>
+                  <input id="reviewUpdatedAt" type="text" value="No review action saved yet." readonly />
+                </div>
+              </div>
+              <div class="field">
+                <label for="editedReply">Edited reply</label>
+                <textarea
+                  id="editedReply"
+                  name="editedReply"
+                  rows="5"
+                  placeholder="Optional final draft the human agent wants to keep on record"
+                ></textarea>
+              </div>
+              <div class="field">
+                <label for="reviewNotes">Review notes</label>
+                <textarea
+                  id="reviewNotes"
+                  name="reviewNotes"
+                  rows="3"
+                  placeholder="Optional notes about the final handling decision"
+                ></textarea>
+              </div>
+              <div class="actions">
+                <button id="saveReviewActionButton" type="submit" class="secondary-button">Save Review Action</button>
+                <span id="reviewActionMessage" class="form-message" aria-live="polite"></span>
+              </div>
+            </form>
+          </section>
         </section>
       </section>
 
@@ -202,12 +303,14 @@
                 <th>Category</th>
                 <th>Urgency</th>
                 <th>Escalation</th>
+                <th>Review status</th>
+                <th>Reviewed by</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody id="historyBody">
               <tr>
-                <td colspan="6" class="empty-state">No analyzed tickets yet.</td>
+                <td colspan="8" class="empty-state">No analyzed tickets yet.</td>
               </tr>
             </tbody>
           </table>

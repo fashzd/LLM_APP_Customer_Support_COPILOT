@@ -36,7 +36,45 @@ export function createStorage({ dbPath }) {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (ticket_id) REFERENCES tickets (id)
     );
+
+    CREATE TABLE IF NOT EXISTS review_actions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL UNIQUE,
+      reviewed_by TEXT NOT NULL DEFAULT '',
+      final_disposition TEXT NOT NULL,
+      edited_reply TEXT NOT NULL DEFAULT '',
+      notes TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (ticket_id) REFERENCES tickets (id)
+    );
   `);
+
+  const recommendationColumns = db.prepare("PRAGMA table_info(recommendations)").all();
+  const recommendationColumnNames = new Set(recommendationColumns.map((column) => column.name));
+
+  if (!recommendationColumnNames.has("fallback_applied")) {
+    db.exec("ALTER TABLE recommendations ADD COLUMN fallback_applied INTEGER NOT NULL DEFAULT 0");
+  }
+
+  if (!recommendationColumnNames.has("fallback_code")) {
+    db.exec("ALTER TABLE recommendations ADD COLUMN fallback_code TEXT NOT NULL DEFAULT ''");
+  }
+
+  if (!recommendationColumnNames.has("fallback_reason")) {
+    db.exec("ALTER TABLE recommendations ADD COLUMN fallback_reason TEXT NOT NULL DEFAULT ''");
+  }
+
+  if (!recommendationColumnNames.has("fallback_trace_id")) {
+    db.exec("ALTER TABLE recommendations ADD COLUMN fallback_trace_id TEXT NOT NULL DEFAULT ''");
+  }
+
+  const reviewActionColumns = db.prepare("PRAGMA table_info(review_actions)").all();
+  const reviewActionColumnNames = new Set(reviewActionColumns.map((column) => column.name));
+
+  if (!reviewActionColumnNames.has("reviewed_by")) {
+    db.exec("ALTER TABLE review_actions ADD COLUMN reviewed_by TEXT NOT NULL DEFAULT ''");
+  }
 
   const insertTicket = db.prepare(`
     INSERT INTO tickets (
@@ -63,8 +101,12 @@ export function createStorage({ dbPath }) {
       escalation_reason,
       source,
       validation_valid,
-      validation_errors_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      validation_errors_json,
+      fallback_applied,
+      fallback_code,
+      fallback_reason,
+      fallback_trace_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     RETURNING
       id,
       ticket_id,
@@ -79,6 +121,10 @@ export function createStorage({ dbPath }) {
       source,
       validation_valid,
       validation_errors_json,
+      fallback_applied,
+      fallback_code,
+      fallback_reason,
+      fallback_trace_id,
       created_at
   `);
 
@@ -116,10 +162,55 @@ export function createStorage({ dbPath }) {
       recommendations.source AS source,
       recommendations.validation_valid AS validation_valid,
       recommendations.validation_errors_json AS validation_errors_json,
+      recommendations.fallback_applied AS fallback_applied,
+      recommendations.fallback_code AS fallback_code,
+      recommendations.fallback_reason AS fallback_reason,
+      recommendations.fallback_trace_id AS fallback_trace_id,
       recommendations.created_at AS recommendation_created_at
     FROM tickets
     INNER JOIN recommendations ON recommendations.ticket_id = tickets.id
     WHERE tickets.id = ?
+  `);
+
+  const getReviewActionByTicketId = db.prepare(`
+    SELECT
+      id,
+      ticket_id,
+      reviewed_by,
+      final_disposition,
+      edited_reply,
+      notes,
+      created_at,
+      updated_at
+    FROM review_actions
+    WHERE ticket_id = ?
+  `);
+
+  const upsertReviewAction = db.prepare(`
+    INSERT INTO review_actions (
+      ticket_id,
+      reviewed_by,
+      final_disposition,
+      edited_reply,
+      notes,
+      created_at,
+      updated_at
+    ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(ticket_id) DO UPDATE SET
+      reviewed_by = excluded.reviewed_by,
+      final_disposition = excluded.final_disposition,
+      edited_reply = excluded.edited_reply,
+      notes = excluded.notes,
+      updated_at = CURRENT_TIMESTAMP
+    RETURNING
+      id,
+      ticket_id,
+      reviewed_by,
+      final_disposition,
+      edited_reply,
+      notes,
+      created_at,
+      updated_at
   `);
 
   function parseRecommendationRow(row) {
@@ -144,8 +235,31 @@ export function createStorage({ dbPath }) {
         validation: {
           valid: Boolean(row.validation_valid),
           errors: JSON.parse(row.validation_errors_json)
+        },
+        fallback: {
+          applied: Boolean(row.fallback_applied),
+          code: row.fallback_code || null,
+          reason: row.fallback_reason || null,
+          trace_id: row.fallback_trace_id || null
         }
       }
+    };
+  }
+
+  function parseReviewActionRow(row) {
+    if (!row) {
+      return null;
+    }
+
+    return {
+      id: row.id,
+      ticket_id: row.ticket_id,
+      reviewed_by: row.reviewed_by,
+      final_disposition: row.final_disposition,
+      edited_reply: row.edited_reply,
+      notes: row.notes,
+      created_at: row.created_at,
+      updated_at: row.updated_at
     };
   }
 
@@ -171,7 +285,11 @@ export function createStorage({ dbPath }) {
       analysis.recommendation.escalation_reason,
       analysis.meta.source,
       analysis.meta.validation.valid ? 1 : 0,
-      JSON.stringify(analysis.meta.validation.errors)
+      JSON.stringify(analysis.meta.validation.errors),
+      analysis.meta.fallback?.applied ? 1 : 0,
+      analysis.meta.fallback?.code || "",
+      analysis.meta.fallback?.reason || "",
+      analysis.meta.fallback?.trace_id || ""
     );
 
     return {
@@ -186,7 +304,9 @@ export function createStorage({ dbPath }) {
       created_at: row.created_at,
       category: row.category,
       urgency: row.urgency,
-      escalation_decision: row.escalation_decision
+      escalation_decision: row.escalation_decision,
+      review_status: parseReviewActionRow(getReviewActionByTicketId.get(row.ticket_id))?.final_disposition || "",
+      reviewed_by: parseReviewActionRow(getReviewActionByTicketId.get(row.ticket_id))?.reviewed_by || ""
     }));
   }
 
@@ -208,13 +328,27 @@ export function createStorage({ dbPath }) {
         policy_snippet: row.policy_snippet,
         created_at: row.ticket_created_at
       },
-      recommendation: parseRecommendationRow(row)
+      recommendation: parseRecommendationRow(row),
+      review_action: parseReviewActionRow(getReviewActionByTicketId.get(ticketId))
     };
+  }
+
+  function saveReviewAction(ticketId, reviewAction) {
+    const row = upsertReviewAction.get(
+      ticketId,
+      reviewAction.reviewed_by,
+      reviewAction.final_disposition,
+      reviewAction.edited_reply,
+      reviewAction.notes
+    );
+
+    return parseReviewActionRow(row);
   }
 
   return {
     saveAnalysis,
     getHistory,
-    getAnalysis
+    getAnalysis,
+    saveReviewAction
   };
 }

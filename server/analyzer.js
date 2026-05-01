@@ -44,7 +44,7 @@ function extractRiskSignals(text) {
   const lowered = text.toLowerCase();
 
   return {
-    legalRisk: /\b(chargeback|lawyer|attorney|legal|bank complaint|regulator|fraud)\b/.test(lowered),
+    legalRisk: /\b(chargeback|lawyer|attorney|legal|bank|complaint|regulator|fraud)\b/.test(lowered),
     repeatContact: /\b(second time|third time|again|still no response|twice|multiple times)\b/.test(lowered),
     policyException: /\b(exception|make an exception|outside policy)\b/.test(lowered)
   };
@@ -81,8 +81,24 @@ function buildMissingInfo(ticket, category) {
   return missing;
 }
 
+function deriveIntentSignals(ticket) {
+  const text = `${ticket.subject || ""} ${ticket.body || ""}`.toLowerCase();
+
+  return {
+    mentionsReturn: /\breturn|send it back|exchange|different size\b/.test(text),
+    mentionsRefund: /\brefund|money back|credit back|charged\b/.test(text),
+    mentionsDamage: /\bbroken|damaged|shattered|defect|defective\b/.test(text),
+    mentionsCancellation: /\bcancel|stop this order\b/.test(text),
+    mentionsShipping: /\bwhere is my order|missing order|never received|not received|tracking|delivered|in transit|late\b/.test(text),
+    explicitMixedIntent: /\b(return it or get a refund|return or refund|refund or return)\b/.test(text),
+    deliveryIssueRefund: /\b(late|delayed).*(refund|money back)|(refund|money back).*(late|delayed)\b/.test(text),
+    returnOnlyLanguage: /\btoo small|too big|does not fit|wrong size|exchange\b/.test(text)
+  };
+}
+
 function detectCategory(ticket) {
   const text = `${ticket.subject || ""} ${ticket.body || ""}`.toLowerCase();
+  const intent = deriveIntentSignals(ticket);
 
   if (/\b(password|log in|login|account|email address)\b/.test(text)) {
     return "Out of scope";
@@ -92,23 +108,35 @@ function detectCategory(ticket) {
     return "Out of scope";
   }
 
-  if (/\bcancel\b/.test(text)) {
+  if (intent.explicitMixedIntent) {
+    return "Out of scope";
+  }
+
+  if (intent.mentionsCancellation) {
     return "Cancellation request";
   }
 
-  if (/\brefund|money back\b/.test(text)) {
+  if (intent.mentionsRefund && intent.deliveryIssueRefund) {
     return "Refund request";
   }
 
-  if (/\breturn\b/.test(text)) {
+  if (intent.mentionsReturn && intent.mentionsRefund) {
+    return "Out of scope";
+  }
+
+  if (intent.mentionsReturn || intent.returnOnlyLanguage) {
     return "Return request";
   }
 
-  if (/\bbroken|damaged|shattered|defect|defective\b/.test(text)) {
+  if (intent.mentionsRefund) {
+    return "Refund request";
+  }
+
+  if (intent.mentionsDamage) {
     return "Damaged item";
   }
 
-  if (/\bwhere is my order|missing order|never received|not received|tracking|delivered\b/.test(text)) {
+  if (intent.mentionsShipping) {
     return "Shipping delay / missing order";
   }
 
@@ -131,6 +159,10 @@ function detectUrgency(ticket, category, riskSignals) {
   }
 
   if (/\burgent|asap|immediately|today\b/.test(text)) {
+    return "High";
+  }
+
+  if (category === "Shipping delay / missing order" && /\bdelivered|missing|never received\b/.test(text)) {
     return "High";
   }
 
@@ -292,7 +324,7 @@ function postProcessRecommendation(recommendation, ticket) {
     );
   }
 
-  if (/\b(chargeback|attorney|legal|fraud)\b/.test(text)) {
+  if (/\b(chargeback|attorney|legal|fraud|bank|complaint)\b/.test(text)) {
     return {
       ...recommendation,
       escalation_decision: "Escalate",
@@ -303,17 +335,33 @@ function postProcessRecommendation(recommendation, ticket) {
   return recommendation;
 }
 
+function buildFallbackMeta(code, reason, validation = { valid: false, errors: [] }) {
+  return {
+    source: process.env.OPENAI_API_KEY ? "openai-or-fallback" : "heuristic",
+    validation,
+    fallback: {
+      applied: true,
+      code,
+      reason,
+      trace_id: `fb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+    }
+  };
+}
+
 export async function analyzeTicket({ ticket, schemaPath, promptSpecPath }) {
   let candidate;
+  let source = process.env.OPENAI_API_KEY ? "openai-or-fallback" : "heuristic";
 
   try {
     candidate = await analyzeWithOpenAI(ticket, schemaPath, promptSpecPath);
   } catch (error) {
     candidate = heuristicAnalyze(ticket);
+    source = "heuristic";
   }
 
   if (!candidate) {
     candidate = heuristicAnalyze(ticket);
+    source = "heuristic";
   }
 
   const schema = JSON.parse(await readFile(schemaPath, "utf8"));
@@ -321,23 +369,42 @@ export async function analyzeTicket({ ticket, schemaPath, promptSpecPath }) {
   const validation = isValidAgainstSchema(schema, normalized);
 
   if (!validation.valid) {
+    const reason = `The generated output did not pass schema validation: ${validation.errors.join("; ")}`;
+
     return {
-      recommendation: buildSafeFallback(
-        ticket,
-        `The generated output did not pass schema validation: ${validation.errors.join("; ")}`
-      ),
-      meta: {
-        source: process.env.OPENAI_API_KEY ? "openai-or-fallback" : "heuristic",
-        validation
-      }
+      recommendation: buildSafeFallback(ticket, reason),
+      meta: buildFallbackMeta("schema_validation_failed", reason, validation)
+    };
+  }
+
+  const unsafeReply = normalized.suggested_reply.toLowerCase();
+
+  if (
+    unsafeReply.includes("has been canceled") ||
+    unsafeReply.includes("already canceled") ||
+    unsafeReply.includes("your order is canceled") ||
+    unsafeReply.includes("refund has been issued") ||
+    unsafeReply.includes("we already refunded")
+  ) {
+    const reason = "The generated output used unsafe action-complete wording and was replaced with a safe fallback.";
+
+    return {
+      recommendation: buildSafeFallback(ticket, reason),
+      meta: buildFallbackMeta("unsafe_wording_detected", reason, validation)
     };
   }
 
   return {
     recommendation: normalized,
     meta: {
-      source: process.env.OPENAI_API_KEY ? "openai-or-fallback" : "heuristic",
-      validation
+      source,
+      validation,
+      fallback: {
+        applied: false,
+        code: null,
+        reason: null,
+        trace_id: null
+      }
     }
   };
 }
